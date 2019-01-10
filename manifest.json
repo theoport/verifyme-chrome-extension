@@ -1,0 +1,17 @@
+{
+    "name": "Verifyme",
+    "description" : "Extension for verifyme certificate",
+    "version": "1.0",
+    "manifest_version": 2,
+    "browser_action": {
+      "default_popup": "verifyme.html",
+      "default_icon": "verified.png"
+    },
+    "permissions": [
+      "file:///*",
+      "http://localhost/*",
+      "storage",
+      "tabs"
+    ]
+}
+
