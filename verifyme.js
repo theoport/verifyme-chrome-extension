@@ -1,4 +1,5 @@
 let domainUrl = "http://verifyme-env.2u7wgmmdxz.us-east-2.elasticbeanstalk.com";
+//let domainUrl = "http://localhost:8080";
 let wallet;
 
 chrome.storage.local.get(['wallet'], (result) => {
