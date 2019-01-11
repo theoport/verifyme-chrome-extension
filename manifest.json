@@ -9,6 +9,7 @@
     },
     "permissions": [
       "file:///*",
+      "http://verifyme-env-1.ve3s88x4v7.us-east-2.elasticbeanstalk.com/*",
       "http://localhost/*",
       "storage",
       "tabs"

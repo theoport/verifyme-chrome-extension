@@ -1,4 +1,4 @@
-
+let domainUrl = "http://verifyme-env-1.ve3s88x4v7.us-east-2.elasticbeanstalk.com";
 let wallet;
 
 chrome.storage.local.get(['wallet'], (result) => {
@@ -17,7 +17,7 @@ chrome.storage.local.get(['wallet'], (result) => {
 function queryTabs() {
   chrome.tabs.query({'active': true, 'currentWindow': true}, function (tabs) {
     var url = tabs[0].url;
-    if(url.substring(0,39) == "http://localhost:8080/verifyCertificate") {
+    if(url.substring(0, domainUrl.length + 18) == domainUrl + "/verifyCertificate") {
       $('#verifyButton').removeAttr("disabled");
       $('#verifyText').html("Type in your password and click verify to confirm your certificate");
     } else {
@@ -105,7 +105,7 @@ function eventsWithWallet() {
     let obj = {"wallet": wallet, "password": password, "message": string[0]};
     $.ajax({
       type: 'POST',
-      url: 'http://localhost:8080/api/sign',
+      url: domainUrl +'/api/sign',
       data: JSON.stringify(obj),
       datatype: 'json',
       contentType: 'application/json',
@@ -123,7 +123,7 @@ function eventsWithWallet() {
   function getVerificationToken(signature, stringToBeSigned, destinationUrl) {
     $.ajax({
       type: 'POST',
-      url: 'http://localhost:8080/api/verify',
+      url: domainUrl +'/api/verify',
       data: JSON.stringify({stringToBeSigned, signature}),
       datatype: 'json',
       contentType: 'application/json',
