@@ -8,6 +8,3 @@
 4. Turn on Developer mode
 5. Click **Load unpacked**
 6. Navigate to the file you unzipped (the directory) und select it
-7. The chrome plugin will show up in your toolbar
-
-### Enjoy the demo
