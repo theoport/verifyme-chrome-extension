@@ -32,7 +32,7 @@ function allowInputOnCorrectDomain() {
 }
 
 function contentWithWallet(wallet) {
-  return '<di>'
+  return '<div>'
     + '<div class="content notification">'
       + '<h4><i class="far fa-file"></i> My certificate</h4>' 
       + `<p>0x${wallet.address}</p>`
