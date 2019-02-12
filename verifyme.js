@@ -2,18 +2,22 @@ let domainUrl = "http://verifyme-env.2u7wgmmdxz.us-east-2.elasticbeanstalk.com";
 
 
 chrome.storage.local.get(['wallet'], (result) => {
-  let wallet;
-  wallet = result.wallet;
-  $("#content").html(wallet != null ?
-    contentWithWallet(wallet)
-    : contentWithoutWallet());
-  if (wallet == null) {
-    initEventHandlersWithoutWallet();
-  } else {
-    initEventHandlersWithWallet(wallet);
-    allowInputOnCorrectDomain();
-  }
-});
+  let wallet = result.wallet;
+  wallet != null ? 
+    initWithWallet(wallet)
+    : initWithoutWallet();
+})
+
+function initWithWallet(wallet) {
+  $("#content").html(contentWithWallet(wallet))
+  initEventHandlersWithWallet(wallet);
+  allowInputOnCorrectDomain();
+}
+
+function initWithoutWallet() {
+  $("#content").html(contentWithoutWallet());
+  initEventHandlersWithoutWallet();
+}
 
 function allowInputOnCorrectDomain() {
   chrome.tabs.query({'active': true, 'currentWindow': true}, function (tabs) {
@@ -106,74 +110,97 @@ function initEventHandlersWithWallet(wallet) {
     disableButtonsInput();
     chrome.tabs.query({'active': true, 'currentWindow': true}, function (tabs) {
       chrome.tabs.executeScript(tabs[0].id, {
-        code: 'document.querySelector("#destinationUrl").textContent'
-      }, (destinationUrl) => {
-        chrome.tabs.executeScript(tabs[0].id, {
-          code: 'document.querySelector("#stringToBeSigned").textContent'
-        }, (data) => signString(data[0], destinationUrl, walletPassword, wallet)) 
-      });
+        code: 'document.querySelector("#stringToBeSigned").textContent'
+      }, ([data]) => verifyAge(data, walletPassword, wallet)) 
     });
   })
 }
 
-function signString(string, destinationUrl, password, wallet) {
+function verifyAge(stringToBeSigned, walletPassword, wallet) {
+  signString(stringToBeSigned, walletPassword, wallet)
+  .then(getVerificationToken)
+  .then(sendVerification)
+  .then(removeCurrentTab)
+  .catch(processError)
+}
+
+function signString(string, password, wallet) {
   let obj = {"wallet": wallet, "password": password, "message": string};
-  $.ajax({
-    type: 'POST',
-    url: domainUrl +'/api/sign',
-    data: JSON.stringify(obj),
-    datatype: 'json',
-    contentType: 'application/json',
-    success: (responseData, textStatus, jqXHR) => {
-      getVerificationToken(responseData, string, destinationUrl[0]);
-    },
-    error: (jqXHR, textStatus, errorThrown) => {
-      $('#verifyText').html(showErrorText(jqXHR.status));
-    }
+  return new Promise((resolve, reject) => {
+    $.ajax({
+      type: 'POST',
+      url: domainUrl +'/api/sign',
+      data: JSON.stringify(obj),
+      datatype: 'json',
+      contentType: 'application/json',
+      success: (responseData, textStatus, jqXHR) => {
+        resolve({stringToBeSigned: string, signature: responseData});
+      },
+      error: (jqXHR, textStatus, errorThrown) => {
+        reject(jqXHR.status);
+      }
+    })
   })
 }
 
-function getVerificationToken(signature, stringToBeSigned, destinationUrl) {
-  $.ajax({
-    type: 'POST',
-    url: domainUrl +'/api/verify',
-    data: JSON.stringify({stringToBeSigned, signature}),
-    datatype: 'json',
-    contentType: 'application/json',
-    success: (responseData, textStatus, jqXHR) => {
-      sendVerification(responseData, destinationUrl);
-    },
-    error: (jqXHR, textStatus, errorThrown) => {
-      $('#verifyText').html(showErrorText(jqXHR.status));
-    }
+function getVerificationToken(signObj) {
+  return new Promise((resolve, reject) => {
+    $.ajax({
+      type: 'POST',
+      url: domainUrl +'/api/verify',
+      data: JSON.stringify(signObj),
+      datatype: 'json',
+      contentType: 'application/json',
+      success: (responseData, textStatus, jqXHR) => {
+        resolve(responseData);
+      },
+      error: (jqXHR, textStatus, errorThrown) => {
+        reject(jqXHR.status);
+      }
+    });
   });
 }
 
-function sendVerification(token, url) {
-  $.ajax({
-    type: 'POST',
-    url,
-    data: {token},
-    datatype: 'text',
-    success: (responseData, textStatus, jqXHR) => {
-      chrome.tabs.query({'active': true, 'currentWindow': true}, function (tabs) {
-        chrome.tabs.remove(tabs[0].id);
-      })
-    },
-    error: (jqXHR, textStatus, errorThrown) => {
-      $('#verifyText').html(showErrorText(jqXHR.status));
-    }
+function sendVerification(token) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({'active': true, 'currentWindow': true}, function (tabs) {
+      chrome.tabs.executeScript(tabs[0].id, {
+        code: 'document.querySelector("#destinationUrl").textContent'
+      }, ([url]) => {
+        $.ajax({
+          type: 'POST',
+          url,
+          data: {token},
+          datatype: 'text',
+          success: (responseData, textStatus, jqXHR) => {
+            resolve();
+          },
+          error: (jqXHR, textStatus, errorThrown) => {
+            reject(jqXHR.status);
+          }
+        });
+      });
+    });
   });
 }
 
-function showErrorText(status) {
+function removeCurrentTab() {
+  chrome.tabs.query({'active': true, 'currentWindow': true}, function (tabs) {
+    chrome.tabs.remove(tabs[0].id);
+  })
+}
+
+function processError(status) {
   enableButtonsInput();
-  let message;
+  $('#verifyText').html(`<p class="has-text-danger">${getErrorText(status)}</p>`);
+}
+
+function getErrorText(status) {
   switch(status) {
-    case 406: message = 'Your age certificate is invalid, please upload a valid one';
-    case 410: message = 'Something went wrong. Please try again by reloading the page you\'re trying to access';
-    case 500: message = 'Wrong password';
-    default: message = 'Something went wrong. Please try again later';
+    case 406: return 'Your age certificate is invalid, please upload a valid one';
+    case 410: return 'Something went wrong. Please try again by reloading the page you\'re trying to access';
+    case 500: return 'Wrong password';
+    default: return 'Something went wrong. Please try again later';
   }
   return `<p class="has-text-danger">${message}</p>`;
 }
