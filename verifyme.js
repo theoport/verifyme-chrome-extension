@@ -1,222 +1,196 @@
 let domainUrl = "http://verifyme-env.2u7wgmmdxz.us-east-2.elasticbeanstalk.com";
-//let domainUrl = "http://localhost:8080";
-let wallet;
+
 
 chrome.storage.local.get(['wallet'], (result) => {
+  let wallet;
   wallet = result.wallet;
   $("#content").html(wallet != null ?
     contentWithWallet(wallet)
     : contentWithoutWallet());
   if (wallet == null) {
-    eventsWithoutWallet();
+    initEventHandlersWithoutWallet();
   } else {
-    eventsWithWallet();
-    queryTabs();
+    initEventHandlersWithWallet(wallet);
+    allowInputOnCorrectDomain();
   }
 });
 
-function queryTabs() {
+function allowInputOnCorrectDomain() {
   chrome.tabs.query({'active': true, 'currentWindow': true}, function (tabs) {
     var url = tabs[0].url;
-    if(url.substring(0, domainUrl.length + 18) == domainUrl + "/verifyCertificate") {
-      $('#verifyButton').removeAttr("disabled");
-      $('#verifyText').html("Type in your password and click verify to confirm your certificate");
+    if(url.substring(0, domainUrl.length + 18) == domainUrl + '/verifyCertificate') {
+      $('#verifyButton').removeAttr('disabled');
+      $('#verifyText').html('Type in your password and click verify to confirm your certificate');
     } else {
-      $('#showPassword').html("");
+      $('#showPassword').html('');
     };  
   });
 }
 
 function contentWithWallet(wallet) {
-  return "<di>"
-    + "<div class=\"content notification\">"
-    + "<h4><i class=\"far fa-file\"></i> My certificate</h4>" 
-    + "<p>0x" + wallet.address + "</p>"
-    + "<div class=\"field\" id=\"showPassword\">"
-    + "<p class=\"control\">"
-    + "<input placeholder=\"password\" class=\"input\" type=\"password\" id=\"walletPassword\" />"
-    + "</p>"
-    + "</div>"
-    + "<div class=\" field is-grouped\">"
-    + "<p class=\"control\"><button id=\"verifyButton\" disabled class=\"button is-success\"><span class=\"icon is-small\"><i class=\"fa fa-check-double\"></i></span><p>Verify</p></button></p>"
-    + "<p class=\"control is-pulled-right\"><button class=\"button is-danger\"id=\"removeWallet\"><span class=\"icon is-small\"><i class=\"fa fa-times\"></i></span><p>Clear certificate</p></button></p>"
-    + "</div><div class=\"help\"><i id=\"verifyText\">You can only verify when requested by a verifyme prompt.</i></div>"
-    + "</div></div>";
+  return '<di>'
+    + '<div class="content notification">'
+      + '<h4><i class="far fa-file"></i> My certificate</h4>' 
+      + `<p>0x${wallet.address}</p>`
+      + '<div class="field" id="showPassword">'
+        + '<p class="control">'
+          + '<input placeholder="password" class="input" type="password" id="walletPassword" />'
+        + '</p>'
+      + '</div>'
+    + '<div class=" field is-grouped">'
+      + '<p class="control"><button id="verifyButton" disabled class="button is-success"><span class="icon is-small"><i class="fa fa-check-double"></i></span><p>Verify</p></button></p>'
+      + '<p class="control is-pulled-right"><button class="button is-danger"id="removeWallet"><span class="icon is-small"><i class="fa fa-times"></i></span><p>Clear certificate</p></button></p>'
+    + '</div>'
+    + '<div class="help"><i id="verifyText">You can only verify when requested by a verifyme prompt.</i></div>'
+    + '</div></div>';
 
 }
 
 function contentWithoutWallet() {
-  return "<div>"
-    + "<div class=\"content notification\">"
-    + "<h4>Upload</h4>"
-    + "<p>Please upload the keyfile that your verifyme certificate is issued to.</p>"
-        + "<div class=\"field is-grouped file\">"
-          + "<label class=\"file-label control\">"
-            + "<input class=\"file-input\" type=\"file\" id=\"file\">"
-            + "<span class=\"file-cta\">"
-              + "<span id=\"fileIcon\" class=\"file-icon\">"
-                + "<i class=\"fas fa-upload\"></i>"
-              + "</span>"
-              + "<span id=\"fileText\" class=\"file-label\">"
-                + "Choose a file"
-              + "</span>"
-            + "</span>"
-          + "</label>"
-          + "<p class=\"control\"><button disabled class=\"button is-success\" id=\"button\">Submit</button></p>"
-        + "</div>"
-        + "<div class=\"help\">File: <b id=\"fileName\">No file</b></div>"
-      + "</div>"
-    + "</div>";
+  return '<div>'
+    + '<div class="content notification">'
+    + '<h4>Upload</h4>'
+    + '<p>Please upload the keyfile that your verifyme certificate is issued to.</p>'
+        + '<div class="field is-grouped file">'
+          + '<label class="file-label control">'
+            + '<input class="file-input" type="file" id="file">'
+            + '<span class="file-cta">'
+              + '<span id="fileIcon" class="file-icon">'
+                + '<i class="fas fa-upload"></i>'
+              + '</span>'
+              + '<span id="fileText" class="file-label">Choose a file</span>'
+            + '</span>'
+          + '</label>'
+          + '<p class="control"><button disabled class="button is-success" id="button">Submit</button></p>'
+        + '</div>'
+        + '<div class="help">File: <b id="fileName">No file</b></div>'
+      + '</div>'
+    + '</div>';
 }
 
-function eventsWithoutWallet() {
-  var file = document.getElementById("file");
-  file.onchange = function(){
-    if(file.files.length > 0)
+function initEventHandlersWithoutWallet() {
+
+  $('#file').on('change', function() {
+    if(this.files.length > 0)
     {
-      document.getElementById('fileIcon').innerHTML = "<i class=\"fa fa-file\"></i>"; 
-      document.getElementById('fileText').innerHTML = "Change file";
-      document.getElementById('fileName').innerHTML = file.files[0].name;
-      document.getElementById('button').removeAttribute("disabled");
+      $('#fileIcon').html('<i class="fa fa-file"></i>'); 
+      $('#fileText').html('Change file');
+      $('#fileName').html(this.files[0].name);
+      $('#button').removeAttr('disabled');
     }
-  };
-  let button = document.getElementById("button");
-  button.onclick = function (){
-    let file    = document.querySelector('input[type=file]').files[0]; //sames as here
+  });
+
+  $('#button').on('click', function() {
     let reader  = new FileReader();
 
     reader.onload = function(){
       let data = JSON.parse(reader.result);
-      chrome.storage.local.set({"wallet": data}, function() {
+      chrome.storage.local.set({'wallet': data}, function() {
         window.location.reload();
       });
-
     };
-    reader.readAsText(file);
-  }
+    reader.readAsText($('#file')[0].files[0]);
+  });
 }
 
-function eventsWithWallet() {
+function initEventHandlersWithWallet(wallet) {
 
-  let verify = $("#verifyButton");
-  let button = $("#removeWallet");
-
-  function signString(string, destinationUrl) {
-    let password = $("#walletPassword").val();
-    let obj = {"wallet": wallet, "password": password, "message": string[0]};
-    $.ajax({
-      type: 'POST',
-      url: domainUrl +'/api/sign',
-      data: JSON.stringify(obj),
-      datatype: 'json',
-      contentType: 'application/json',
-      success: (responseData, textStatus, jqXHR) => {
-        getVerificationToken(responseData, string[0], destinationUrl[0]);
-      },
-      error: (jqXHR, textStatus, errorThrown) => {
-        if (jqXHR.status == 0) serverDown();
-        else if (jqXHR.status == 500) wrongPassword();
-        else somethingWrong();
-      }
-    })
-  }
-
-  function getVerificationToken(signature, stringToBeSigned, destinationUrl) {
-    $.ajax({
-      type: 'POST',
-      url: domainUrl +'/api/verify',
-      data: JSON.stringify({stringToBeSigned, signature}),
-      datatype: 'json',
-      contentType: 'application/json',
-      success: (responseData, textStatus, jqXHR) => {
-        sendVerification(responseData, destinationUrl);
-      },
-      error: (jqXHR, textStatus, errorThrown) => {
-        if (jqXHR.status == 0) serverDown();
-        else if (jqXHR.status == 406) noCertificate();
-        else if (jqXHR.status == 410) alreadySigned();
-        else somethingWrong();
-        ;
-      }
-    });
-  }
-
-  function sendVerification(token, url) {
-    $.ajax({
-      type: 'POST',
-      url,
-      data: {token},
-      datatype: 'text',
-      success: (responseData, textStatus, jqXHR) => {
-        chrome.tabs.query({'active': true, 'currentWindow': true}, function (tabs) {
-          chrome.tabs.remove(tabs[0].id);
-        })
-      },
-      error: (jqXHR, textStatus, errorThrown) => {
-        invalidToken();
-      }
-    });
-  }
-
-  function noCertificate() {
-    enableButtonsInput();
-    $('#verifyText').html("<p class=\"has-text-danger\">Your age certificate is invalid, please upload a valid one</p>");
-  }
-  function serverDown() {
-    enableButtonsInput();
-    $('#verifyText').html("<p class=\"has-text-danger\">Something went wrong. Please try again later</p>");
-  }
-  function somethingWrong() {
-    enableButtonsInput();
-      $('#verifyText').html("<p class=\"has-text-danger\">Something went wrong. Please try again later</p>");
-  }
-  function alreadySigned() {
-    enableButtonsInput();
-      $('#verifyText').html("<p class=\"has-text-danger\">Something went wrong. Please try again by reloading the page you're trying to access</p>");
-  }
-
-  function invalidToken() {
-    enableButtonsInput();
-      $('#verifyText').html("<p class=\"has-text-danger\">Something went wrong. Please try again by reloading the page you're trying to access</p>");
-  }
-
-  function wrongPassword() {
-    enableButtonsInput();
-      $('#verifyText').html("<p class=\"has-text-danger\">Wrong password</p>");
-  }
-
-  function enableButtonsInput() {
-    button.removeAttr("disabled");
-    verify.removeAttr("disabled");
-    verify[0].classList.remove("is-loading");
-    $("#walletPassword").removeAttr("disabled");
-    $("#walletPassword").val("");
-  }
-
-  function disableButtonsInput() {
-    verify[0].classList.add("is-loading");
-    verify.attr("disabled", true); 
-    button.attr("disabled", true); 
-    $("#walletPassword").attr("disabled", true); 
-  }
-
-  button.click(function() {
-    chrome.storage.local.remove("wallet", () => {
+  $('#removeWallet').on('click', function() {
+    chrome.storage.local.remove('wallet', () => {
       window.location.reload();
     });
   })
 
-  verify.click(function() {
+  $('#verifyButton').on('click', function() {
+    let walletPassword = $('#walletPassword').val();
     disableButtonsInput();
     chrome.tabs.query({'active': true, 'currentWindow': true}, function (tabs) {
       chrome.tabs.executeScript(tabs[0].id, {
         code: 'document.querySelector("#destinationUrl").textContent'
       }, (destinationUrl) => {
-            chrome.tabs.executeScript(tabs[0].id, {
-              code: 'document.querySelector("#stringToBeSigned").textContent'
-            }, (data) => signString(data, destinationUrl));
-        });
+        chrome.tabs.executeScript(tabs[0].id, {
+          code: 'document.querySelector("#stringToBeSigned").textContent'
+        }, (data) => signString(data[0], destinationUrl, walletPassword, wallet)) 
+      });
     });
   })
-
 }
+
+function signString(string, destinationUrl, password, wallet) {
+  let obj = {"wallet": wallet, "password": password, "message": string};
+  $.ajax({
+    type: 'POST',
+    url: domainUrl +'/api/sign',
+    data: JSON.stringify(obj),
+    datatype: 'json',
+    contentType: 'application/json',
+    success: (responseData, textStatus, jqXHR) => {
+      getVerificationToken(responseData, string, destinationUrl[0]);
+    },
+    error: (jqXHR, textStatus, errorThrown) => {
+      $('#verifyText').html(showErrorText(jqXHR.status));
+    }
+  })
+}
+
+function getVerificationToken(signature, stringToBeSigned, destinationUrl) {
+  $.ajax({
+    type: 'POST',
+    url: domainUrl +'/api/verify',
+    data: JSON.stringify({stringToBeSigned, signature}),
+    datatype: 'json',
+    contentType: 'application/json',
+    success: (responseData, textStatus, jqXHR) => {
+      sendVerification(responseData, destinationUrl);
+    },
+    error: (jqXHR, textStatus, errorThrown) => {
+      $('#verifyText').html(showErrorText(jqXHR.status));
+    }
+  });
+}
+
+function sendVerification(token, url) {
+  $.ajax({
+    type: 'POST',
+    url,
+    data: {token},
+    datatype: 'text',
+    success: (responseData, textStatus, jqXHR) => {
+      chrome.tabs.query({'active': true, 'currentWindow': true}, function (tabs) {
+        chrome.tabs.remove(tabs[0].id);
+      })
+    },
+    error: (jqXHR, textStatus, errorThrown) => {
+      $('#verifyText').html(showErrorText(jqXHR.status));
+    }
+  });
+}
+
+function showErrorText(status) {
+  enableButtonsInput();
+  let message;
+  switch(status) {
+    case 406: message = 'Your age certificate is invalid, please upload a valid one';
+    case 410: message = 'Something went wrong. Please try again by reloading the page you\'re trying to access';
+    case 500: message = 'Wrong password';
+    default: message = 'Something went wrong. Please try again later';
+  }
+  return `<p class="has-text-danger">${message}</p>`;
+}
+
+function enableButtonsInput() {
+  $('#button').removeAttr('disabled');
+  $('#verifyButton').removeAttr('disabled');
+  $('#verifyButton')[0].classList.remove('is-loading');
+  $('#walletPassword').removeAttr('disabled');
+  $('#walletPassword').val("");
+}
+
+function disableButtonsInput() {
+  $('#verifyButton')[0].classList.add("is-loading");
+  $('#verifyButton').attr('disabled', true); 
+  $('#button').attr('disabled', true); 
+  $('#walletPassword').attr('disabled', true); 
+}
+
+
